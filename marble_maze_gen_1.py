@@ -79,6 +79,16 @@ def remove_all_meshes():
     select_all_meshes()
     O.object.delete()
 
+# Creates support tube as hollow cylinder at given location
+# Params:
+#   loc_vec - location of object
+# Return:
+#   created object
+def create_support(loc_vec):
+    O.mesh.primitive_cylinder_add(location=loc_vec)
+    O.transform.resize(value=(1, 1, 1))
+    return
+
 def main():
     print("\n\n\n\n\nGenerating Marble Maze...")
 
@@ -130,6 +140,9 @@ def main():
 
     # Point camera at maze
     look_at(cam1, base.matrix_world.to_translation())
+
+    l = [2,2,2]
+    create_support(l)
 
 if __name__ == "__main__":
     main()
