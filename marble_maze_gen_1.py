@@ -1,7 +1,19 @@
-import bpy
+import bpy, bmesh
 from bpy import data as D
 from bpy import context as C
 from bpy import ops as O
+from mathutils import Vector
+
+# Selects object of given name
+# Params:
+#   obj_name - name of object to be selected
+# Return:
+#   Nothing
+def select_object(obj_name):
+    for obj in C.scene.objects:
+        if obj.name == obj_name:
+            obj.select_set(True)
+    return
 
 # Creates a plane using given parameters
 # Params:
@@ -81,12 +93,55 @@ def remove_all_meshes():
 
 # Creates support tube as hollow cylinder at given location
 # Params:
+#   name - name for object
 #   loc_vec - location of object
 # Return:
 #   created object
-def create_support(loc_vec):
+# https://blender.stackexchange.com/questions/115397/extrude-in-python
+# https://blender.stackexchange.com/questions/65359/how-to-create-and-extrude-a-bmesh-face
+# https://blender.stackexchange.com/questions/121123/using-python-and-bmesh-to-scale-resize-a-face-in-place
+def create_support(name, loc_vec):
+
+    # If an object were named the name of the mesh created, undesired behavior 
+    # would occur next time that mesh was created (Mesh.001 would be made, Mesh would be modified)
+    if (name == "Cylinder"):
+        print("Use a different name for the object.")
+        return 0
+
     O.mesh.primitive_cylinder_add(location=loc_vec)
-    O.transform.resize(value=(1, 1, 1))
+
+    # Set name
+    for obj in C.selected_objects:
+        if (obj.type == "MESH") and (obj.name == "Cylinder"):
+            obj.name = name
+            break
+    
+    O.object.mode_set(mode = 'EDIT')
+    O.mesh.select_mode(type = 'FACE')
+
+    # Get a BMesh representation
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+    m_faces = [] # list of faces to modify
+
+    # Only want to extrude and scale end faces, so those with more than 4 vertices.
+    for f in bm.faces:
+        if (len(f.verts) > 4) and (f.index < 34):
+            m_faces.append(f)
+
+    # extrude faces in place 
+    # extruded = bmesh.ops.extrude_face_region(bm, geom=m_faces)
+    # bmesh.ops.translate(bm, vec=Vector(0,0,0), verts=[v for v in extruded["geom"] if isinstance(v,bmesh.types.BMVert)])
+    # bm.normal_update()
+
+    # scale faces in place
+    # c = f.calc_center_median()
+    # for v in f.verts:
+    # v.co = c + 0.9 * (v.co - c)
+
+    # Update & Destroy Bmesh
+    # bmesh.update_edit_mesh(me, True) # Write the bmesh back to the mesh
+
     return
 
 def main():
@@ -133,16 +188,18 @@ def main():
         pass
 
     # Add camera 1 to scene
-    cam1 = add_camera("Camera 1", cam1_loc)
+    # cam1 = add_camera("Camera 1", cam1_loc)
 
     # Create plane as base for maze
-    base = create_plane("Base", 0, 0, 0, base_size, base_size)
+    # base = create_plane("Base", 0, 0, 0, base_size, base_size)
 
     # Point camera at maze
-    look_at(cam1, base.matrix_world.to_translation())
+    # look_at(cam1, base.matrix_world.to_translation())
 
-    l = [2,2,2]
-    create_support(l)
+    l = [0,0,0]
+    create_support("S_0", l)
+
+    return
 
 if __name__ == "__main__":
     main()
