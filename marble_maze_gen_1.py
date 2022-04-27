@@ -91,6 +91,28 @@ def remove_all_meshes():
     select_all_meshes()
     O.object.delete()
 
+# Creates a marble using given parameters
+# Params:
+#   name - name of marble
+#   x,y,z_loc - initial location of marble
+#   scl - scale of marble
+# Return:
+#   Created marble object 
+def create_marble(name, x_loc, y_loc, z_loc, scl):
+    print("Creating plane...")
+    O.mesh.primitive_uv_sphere_add(location=(x_loc,y_loc,z_loc))
+    O.transform.resize(value=(scl, scl, scl))
+    
+    # Set plane's name to name
+    for obj in C.selected_objects:
+        if (obj.type == "MESH") and (obj.name == "Sphere"):
+            obj.name = name
+            break
+
+    O.rigidbody.object_add(type='ACTIVE')
+
+    return obj
+
 # Creates support tube as hollow cylinder at given location
 # Params:
 #   name - name for object
@@ -140,6 +162,11 @@ def create_support(name, loc_vec):
             f.select = True    
 
     O.mesh.delete(type='FACE')    
+    
+    O.object.mode_set(mode = 'OBJECT')
+    O.rigidbody.object_add(type='PASSIVE')
+    C.object.rigid_body.collision_shape = 'MESH'
+
     return obj
 
 def main():
@@ -189,14 +216,18 @@ def main():
     # cam1 = add_camera("Camera 1", cam1_loc)
 
     # Create plane as base for maze
-    # base = create_plane("Base", 0, 0, 0, base_size, base_size)
+    base = create_plane("Base", 0, 0, 0, base_size, base_size)
+    O.rigidbody.object_add(type='PASSIVE')
 
     # Point camera at maze
     # look_at(cam1, base.matrix_world.to_translation())
 
-    print("Creating supports.")
-    l = [0,0,1]
-    create_support("S_0", l)
+    print("Creating supports...")
+    
+    s_0 = create_support("S_0", [0,0,1])
+
+    m_0 = create_marble("M_0", 0, 0, 4, 0.5)
+
 
     return
 
