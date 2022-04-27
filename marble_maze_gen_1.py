@@ -97,8 +97,7 @@ def remove_all_meshes():
 #   loc_vec - location of object
 # Return:
 #   created object
-# https://blender.stackexchange.com/questions/115397/extrude-in-python
-# https://blender.stackexchange.com/questions/65359/how-to-create-and-extrude-a-bmesh-face
+# https://stackoverflow.com/questions/37808840/selecting-a-face-and-extruding-a-cube-in-blender-via-python-api
 # https://blender.stackexchange.com/questions/121123/using-python-and-bmesh-to-scale-resize-a-face-in-place
 def create_support(name, loc_vec):
 
@@ -118,31 +117,30 @@ def create_support(name, loc_vec):
     
     O.object.mode_set(mode = 'EDIT')
     O.mesh.select_mode(type = 'FACE')
-
+    O.mesh.select_all(action = 'DESELECT')
+    
     # Get a BMesh representation
     me = obj.data
     bm = bmesh.from_edit_mesh(me)
-    m_faces = [] # list of faces to modify
 
-    # Only want to extrude and scale end faces, so those with more than 4 vertices.
+    # Inset faces
     for f in bm.faces:
-        if (len(f.verts) > 4) and (f.index < 34):
-            m_faces.append(f)
+        if ((f.index == 30) or (f.index == 33)): # Top and Bottom
+            f.select = True
+            O.mesh.inset(thickness=0.25) # Do it once to actually inset
+            O.mesh.inset(thickness=0) # Do it 2nd time so faces can be deleted
+            if (f.index == 30): # Top only 
+                O.transform.translate(value=(0, 0, -2))
+            f.select = False
 
-    # extrude faces in place 
-    # extruded = bmesh.ops.extrude_face_region(bm, geom=m_faces)
-    # bmesh.ops.translate(bm, vec=Vector(0,0,0), verts=[v for v in extruded["geom"] if isinstance(v,bmesh.types.BMVert)])
-    # bm.normal_update()
+    O.mesh.select_all(action = 'DESELECT')
 
-    # scale faces in place
-    # c = f.calc_center_median()
-    # for v in f.verts:
-    # v.co = c + 0.9 * (v.co - c)
+    for f in bm.faces:
+        if ((f.index == 30) or (f.index == 33)):
+            f.select = True    
 
-    # Update & Destroy Bmesh
-    # bmesh.update_edit_mesh(me, True) # Write the bmesh back to the mesh
-
-    return
+    O.mesh.delete(type='FACE')    
+    return obj
 
 def main():
     print("\n\n\n\n\nGenerating Marble Maze...")
@@ -196,7 +194,8 @@ def main():
     # Point camera at maze
     # look_at(cam1, base.matrix_world.to_translation())
 
-    l = [0,0,0]
+    print("Creating supports.")
+    l = [0,0,1]
     create_support("S_0", l)
 
     return
