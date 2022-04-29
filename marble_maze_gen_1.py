@@ -130,6 +130,7 @@ def create_support(name, loc_vec):
         return 0
 
     O.mesh.primitive_cylinder_add(location=loc_vec)
+    O.transform.resize(value=(0.5, 0.5, 0.5))
 
     # Set name
     for obj in C.selected_objects:
@@ -149,10 +150,10 @@ def create_support(name, loc_vec):
     for f in bm.faces:
         if ((f.index == 30) or (f.index == 33)): # Top and Bottom
             f.select = True
-            O.mesh.inset(thickness=0.25) # Do it once to actually inset
+            O.mesh.inset(thickness=0.125) # Do it once to actually inset
             O.mesh.inset(thickness=0) # Do it 2nd time so faces can be deleted
             if (f.index == 30): # Top only 
-                O.transform.translate(value=(0, 0, -2))
+                O.transform.translate(value=(0, 0, -1))
             f.select = False
 
     O.mesh.select_all(action = 'DESELECT')
@@ -168,6 +169,36 @@ def create_support(name, loc_vec):
     C.object.rigid_body.collision_shape = 'MESH'
 
     return obj
+
+# Creates track at given location
+# Params:
+#   name - name for object
+#   loc_vec - location of object
+# Return:
+#   created object
+def create_track(name, loc_vec):
+    # Create track portion first
+    track = create_support(name, loc_vec)
+
+
+    # Cut off top half of cylinder to create open track
+    O.object.mode_set(mode = 'EDIT')
+    O.mesh.select_mode(type = 'EDGE')
+    O.mesh.select_all(action = 'SELECT')
+    O.mesh.bisect(plane_co=loc_vec, plane_no=(0, 1, 0), use_fill=True, clear_inner=True, clear_outer=False, xstart=287, xend=361, ystart=219, yend=217)
+    O.object.mode_set(mode = 'OBJECT')
+
+    O.transform.rotate(value=1.65, orient_axis='X', orient_type='GLOBAL')
+    O.transform.resize(value=(0.8,4,0.8))
+    O.transform.translate(value=(0,0,0.25))
+
+    # Create two end supports
+    e0 = create_support(name+"_e0", [a - b for a, b in zip(loc_vec, [0,1.8,0])])
+    e1 = create_support(name+"_e1", [a - b for a, b in zip(loc_vec, [0,-2.2,0])])
+
+    # "Cut" holes in supports so marble can roll into one from the top, across track, down other.
+
+    return track
 
 def main():
     print("\n\n\n\n\nGenerating Marble Maze...")
@@ -216,7 +247,7 @@ def main():
     # cam1 = add_camera("Camera 1", cam1_loc)
 
     # Create plane as base for maze
-    base = create_plane("Base", 0, 0, 0, base_size, base_size)
+    base = create_plane("Base", 0, 0, -0.5, base_size, base_size)
     O.rigidbody.object_add(type='PASSIVE')
 
     # Point camera at maze
@@ -224,9 +255,11 @@ def main():
 
     print("Creating supports...")
     
-    s_0 = create_support("S_0", [0,0,1])
+    s_0 = create_support("S_0", [0,0,0])
 
-    m_0 = create_marble("M_0", 0, 0, 4, 0.5)
+    m_0 = create_marble("M_0", 0, 0, 4, 0.25)
+
+    t_0 = create_track("T_0", [0,0,2])
 
 
     return
