@@ -4,16 +4,29 @@ from bpy import context as C
 from bpy import ops as O
 from mathutils import Vector
 
+# Gets object of given name
+# ParamsL
+#   obj_name - name of object required
+# Return:
+#   Object of name given
+def get_object(obj_name):
+    for obj in C.scene.objects:
+        if obj.name == obj_name:
+            return obj
+    
+    # If not found
+    print("Object named", obj_name, "not found.")
+    return 0
+
 # Selects object of given name
 # Params:
 #   obj_name - name of object to be selected
 # Return:
-#   Nothing
+#   Object selected
 def select_object(obj_name):
-    for obj in C.scene.objects:
-        if obj.name == obj_name:
-            obj.select_set(True)
-    return
+    obj = get_object(obj_name)
+    obj.select_set(True)
+    return obj
 
 # Creates a plane using given parameters
 # Params:
@@ -82,6 +95,16 @@ def select_all_meshes():
         if obj.type == "MESH":
             obj.select_set(True)
 
+# Deelects all meshes in scene
+# Params:
+#   Nothing
+# Return:
+#   Nothing
+def deselect_all_meshes():
+    for obj in C.scene.objects:
+        if obj.type == "MESH":
+            obj.select_set(False)
+
 # Removes all meshes in scene
 # Params:
 #   Nothing
@@ -90,6 +113,27 @@ def select_all_meshes():
 def remove_all_meshes():
     select_all_meshes()
     O.object.delete()
+
+    return
+
+# Adds boolean operator between two meshes in a scene
+# Params:
+#   mesh_1 - mesh object to receive boolean modifier
+#   mesh_2 - mesh object used as boolean modifier
+#   bool_op - boolean operator to add
+# Return:
+#   Result of bool operation
+def bool_meshes(mesh_1, mesh_2, bool_op):
+    name_1 = mesh_1.name
+    name_2 = mesh_2.name
+    mod = D.objects[name_1].modifiers.new('Boolean', type='BOOLEAN')
+    mod.operation = bool_op
+    mod.object = D.objects[name_2]
+    C.view_layer.objects.active = bpy.data.objects[name_1]
+    # Apply the modifier.
+    res = O.object.modifier_apply(modifier = 'Boolean')
+
+    return res
 
 # Creates a marble using given parameters
 # Params:
@@ -113,6 +157,23 @@ def create_marble(name, x_loc, y_loc, z_loc, scl):
 
     return obj
 
+# Creates cylinder at given location
+# Params:
+#   name - name for object
+#   loc_vec - location of object
+# Return:
+#   created object
+def create_cylinder(name, loc_vec):
+    O.mesh.primitive_cylinder_add(location=loc_vec)
+
+    # Set name
+    for obj in C.selected_objects:
+        if (obj.type == "MESH") and (obj.name == "Cylinder"):
+            obj.name = name
+            break
+    
+    return obj
+
 # Creates support tube as hollow cylinder at given location
 # Params:
 #   name - name for object
@@ -129,15 +190,10 @@ def create_support(name, loc_vec):
         print("Use a different name for the object.")
         return 0
 
-    O.mesh.primitive_cylinder_add(location=loc_vec)
-    O.transform.resize(value=(0.5, 0.5, 0.5))
+    obj = create_cylinder(name, loc_vec)
 
-    # Set name
-    for obj in C.selected_objects:
-        if (obj.type == "MESH") and (obj.name == "Cylinder"):
-            obj.name = name
-            break
-    
+    O.transform.resize(value=(0.5, 0.5, 0.75))
+
     O.object.mode_set(mode = 'EDIT')
     O.mesh.select_mode(type = 'FACE')
     O.mesh.select_all(action = 'DESELECT')
@@ -153,7 +209,7 @@ def create_support(name, loc_vec):
             O.mesh.inset(thickness=0.125) # Do it once to actually inset
             O.mesh.inset(thickness=0) # Do it 2nd time so faces can be deleted
             if (f.index == 30): # Top only 
-                O.transform.translate(value=(0, 0, -1))
+                O.transform.translate(value=(0, 0, -1.5))
             f.select = False
 
     O.mesh.select_all(action = 'DESELECT')
@@ -168,6 +224,8 @@ def create_support(name, loc_vec):
     O.rigidbody.object_add(type='PASSIVE')
     C.object.rigid_body.collision_shape = 'MESH'
 
+    deselect_all_meshes()
+
     return obj
 
 # Creates track at given location
@@ -180,8 +238,8 @@ def create_track(name, loc_vec):
     # Create track portion first
     track = create_support(name, loc_vec)
 
-
     # Cut off top half of cylinder to create open track
+    select_object(track.name)
     O.object.mode_set(mode = 'EDIT')
     O.mesh.select_mode(type = 'EDGE')
     O.mesh.select_all(action = 'SELECT')
@@ -190,13 +248,30 @@ def create_track(name, loc_vec):
 
     O.transform.rotate(value=1.65, orient_axis='X', orient_type='GLOBAL')
     O.transform.resize(value=(0.8,4,0.8))
-    O.transform.translate(value=(0,0,0.25))
+    O.transform.translate(value=(0,0,0.25))  
+
+    hole_cutter = create_cylinder(name+"_hole_cutter", loc_vec)
+    select_object(hole_cutter.name)
+    O.transform.rotate(value=1.65, orient_axis='X', orient_type='GLOBAL')
+    O.transform.resize(value=(0.35,0.35,0.35))
 
     # Create two end supports
-    e0 = create_support(name+"_e0", [a - b for a, b in zip(loc_vec, [0,1.8,0])])
-    e1 = create_support(name+"_e1", [a - b for a, b in zip(loc_vec, [0,-2.2,0])])
+    e0 = create_support(name+"_e0", [a - b for a, b in zip(loc_vec, [0,2.75,0])])
+    e1 = create_support(name+"_e1", [a - b for a, b in zip(loc_vec, [0,-3.15,0])])
 
     # "Cut" holes in supports so marble can roll into one from the top, across track, down other.
+    select_object(hole_cutter.name)
+    O.transform.translate(value=(0,-2.2,0.35))  
+    bool_meshes(e0, hole_cutter, 'DIFFERENCE')
+    deselect_all_meshes()
+
+    select_object(hole_cutter.name)
+    O.transform.translate(value=(0,4.9,-0.35))  
+    bool_meshes(e1, hole_cutter, 'DIFFERENCE')
+    deselect_all_meshes()
+
+    select_object(hole_cutter.name)
+    O.object.delete()
 
     return track
 
