@@ -278,7 +278,6 @@ def create_track(name, loc_vec):
     O.object.delete()
 
     # Merge end supports to track to create single track object.
-    select_object(hole_cutter.name)
     select_object(track.name)
     bool_meshes(track, e0, 'UNION')
     deselect_all_meshes()
