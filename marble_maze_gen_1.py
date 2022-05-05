@@ -138,13 +138,14 @@ def bool_meshes(mesh_1, mesh_2, bool_op):
 # Creates a marble using given parameters
 # Params:
 #   name - name of marble
-#   x,y,z_loc - initial location of marble
+#   loc_vec - initial location of marble
 #   scl - scale of marble
 # Return:
 #   Created marble object 
-def create_marble(name, x_loc, y_loc, z_loc, scl):
-    print("Creating plane...")
-    O.mesh.primitive_uv_sphere_add(location=(x_loc,y_loc,z_loc))
+def create_marble(name, loc_vec, scl):
+    z_mod = (loc_vec[2] * 1.5) + 0.75
+    loc_vec_modded = [loc_vec[0], loc_vec[1], z_mod]
+    O.mesh.primitive_uv_sphere_add(location=loc_vec_modded)
     O.transform.resize(value=(scl, scl, scl))
     
     # Set plane's name to name
@@ -164,7 +165,9 @@ def create_marble(name, x_loc, y_loc, z_loc, scl):
 # Return:
 #   created object
 def create_cylinder(name, loc_vec):
-    O.mesh.primitive_cylinder_add(location=loc_vec)
+    z_mod = (loc_vec[2] * 1.5) + 0.75
+    loc_vec_modded = [loc_vec[0], loc_vec[1], z_mod]
+    O.mesh.primitive_cylinder_add(location=loc_vec_modded)
 
     # Set name
     for obj in C.selected_objects:
@@ -235,8 +238,11 @@ def create_support(name, loc_vec):
 # Return:
 #   created object
 def create_track(name, loc_vec):
+    track_length = 2.45
+    mod_loc_vec = [a + b for a, b in zip(loc_vec, [0,0,0])]
+
     # Create track portion first
-    track = create_support(name, loc_vec)
+    track = create_support(name, mod_loc_vec)
 
     # Cut off top half of cylinder to create open track
     select_object(track.name)
@@ -247,31 +253,46 @@ def create_track(name, loc_vec):
     O.object.mode_set(mode = 'OBJECT')
 
     O.transform.rotate(value=1.65, orient_axis='X', orient_type='GLOBAL')
-    O.transform.resize(value=(0.8,4,0.8))
-    O.transform.translate(value=(0,0,0.25))  
+    O.transform.resize(value=(0.8,track_length+0.3,0.8))
+    O.transform.translate(value=(0,-0.25,0))
 
-    hole_cutter = create_cylinder(name+"_hole_cutter", loc_vec)
+    hole_cutter = create_cylinder(name+"_hole_cutter", mod_loc_vec)
     select_object(hole_cutter.name)
     O.transform.rotate(value=1.65, orient_axis='X', orient_type='GLOBAL')
-    O.transform.resize(value=(0.35,0.35,0.35))
+    O.transform.resize(value=(0.375,track_length-0.6,0.375))
 
     # Create two end supports
-    e0 = create_support(name+"_e0", [a - b for a, b in zip(loc_vec, [0,2.75,0])])
-    e1 = create_support(name+"_e1", [a - b for a, b in zip(loc_vec, [0,-3.15,0])])
+    e0 = create_support(name+"_e0", [a - b for a, b in zip(loc_vec, [0,track_length-0.45,0])])
+    e1 = create_support(name+"_e1", [a - b for a, b in zip(loc_vec, [0,0.45-track_length,0])])
 
     # "Cut" holes in supports so marble can roll into one from the top, across track, down other.
     select_object(hole_cutter.name)
-    O.transform.translate(value=(0,-2.2,0.35))  
     bool_meshes(e0, hole_cutter, 'DIFFERENCE')
     deselect_all_meshes()
 
     select_object(hole_cutter.name)
-    O.transform.translate(value=(0,4.9,-0.35))  
     bool_meshes(e1, hole_cutter, 'DIFFERENCE')
     deselect_all_meshes()
 
     select_object(hole_cutter.name)
     O.object.delete()
+
+    # Merge end supports to track to create single track object.
+    select_object(hole_cutter.name)
+    select_object(track.name)
+    bool_meshes(track, e0, 'UNION')
+    deselect_all_meshes()
+    select_object(e0.name)
+    O.object.delete()
+    
+    select_object(track.name)
+    bool_meshes(track, e1, 'UNION')
+    deselect_all_meshes()
+    select_object(e1.name)
+    O.object.delete()
+
+    # Next, have to make track smoother for marble to roll down; seems like momentum isn't
+    # carrying very well from the drop to the roll.
 
     return track
 
@@ -322,7 +343,7 @@ def main():
     # cam1 = add_camera("Camera 1", cam1_loc)
 
     # Create plane as base for maze
-    base = create_plane("Base", 0, 0, -0.5, base_size, base_size)
+    base = create_plane("Base", 0, 0, 0, base_size, base_size)
     O.rigidbody.object_add(type='PASSIVE')
 
     # Point camera at maze
@@ -332,10 +353,13 @@ def main():
     
     s_0 = create_support("S_0", [0,0,0])
 
-    m_0 = create_marble("M_0", 0, 0, 4, 0.25)
+    print("Creating marble...")
 
-    t_0 = create_track("T_0", [0,0,2])
+    m_0 = create_marble("M_0", [0,0,2], 0.275)
 
+    print("Creating track...")
+
+    t_0 = create_track("T_0", [0,2,1])
 
     return
 
