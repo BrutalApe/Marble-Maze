@@ -31,13 +31,15 @@ def select_object(obj_name):
 # Creates a plane using given parameters
 # Params:
 #   name - name of plane
-#   x,y,z_loc - location of plane
+#   loc_vec - location of plane
 #   x,y_scl - scale of plane
 # Return:
 #   Created plane object 
-def create_plane(name, x_loc, y_loc, z_loc, x_scl, y_scl):
+def create_plane(name, loc_vec, x_scl, y_scl):
     print("Creating plane...")
-    O.mesh.primitive_plane_add(location=(x_loc,y_loc,z_loc))
+    z_mod = (loc_vec[2] * 1.5) + 0.75
+    loc_vec_modded = [loc_vec[0], loc_vec[1], z_mod]
+    O.mesh.primitive_plane_add(location=loc_vec_modded)
     O.transform.resize(value=(x_scl, y_scl, 0))
     
     # Set plane's name to name
@@ -314,8 +316,16 @@ def create_track(name, loc_vec):
     select_object(e1.name)
     O.object.delete()
 
-    # Next, have to make track smoother for marble to roll down; seems like momentum isn't
-    # carrying very well from the drop to the roll.
+    # Add small plane at an angle inside start of track to add starting momentum
+    p0 = create_plane(name+"_p0", [a - b for a, b in zip(loc_vec, [0,track_length-0.45,0])], 0.35, 0.45)
+    O.transform.rotate(value=0.7, orient_axis='X', orient_type='GLOBAL')
+    O.rigidbody.object_add(type='PASSIVE')
+
+    select_object(track.name)
+    bool_meshes(track, p0, 'UNION')
+    deselect_all_meshes()
+    select_object(p0.name)
+    O.object.delete()
 
     return track
 
@@ -366,7 +376,7 @@ def main():
     # cam1 = add_camera("Camera 1", cam1_loc)
 
     # Create plane as base for maze
-    base = create_plane("Base", 0, 0, 0, base_size, base_size)
+    base = create_plane("Base", [0,0,-0.5], base_size, base_size)
     O.rigidbody.object_add(type='PASSIVE')
 
     # Point camera at maze
