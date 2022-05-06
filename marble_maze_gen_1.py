@@ -226,10 +226,34 @@ def create_support(name, loc_vec):
     O.object.mode_set(mode = 'OBJECT')
     O.rigidbody.object_add(type='PASSIVE')
     C.object.rigid_body.collision_shape = 'MESH'
+    C.object.rigid_body.friction = 0.1
 
     deselect_all_meshes()
 
     return obj
+
+# Creates beginning funnel of maze at given location
+# Params:
+#   name - name for object
+#   loc_vec - location of object
+# Return:
+#   created object
+def create_start_funnel(name, loc_vec):
+    
+    # Create support at basis of funnel shape
+    funnel = create_support(name, loc_vec)
+
+    # Scale top out to create basic funnel shape
+    polygon_index_list = list(range(32, 64))
+    O.object.mode_set(mode="OBJECT")
+    for p_i in polygon_index_list:
+        funnel.data.polygons[p_i].select = True
+    O.object.mode_set(mode = 'EDIT')
+    O.transform.resize(value=(1.5, 1.5, 1))
+    O.object.mode_set(mode="OBJECT")
+
+    return funnel
+    
 
 # Creates track at given location
 # Params:
@@ -349,16 +373,16 @@ def main():
     # look_at(cam1, base.matrix_world.to_translation())
 
     print("Creating supports...")
-    
     s_0 = create_support("S_0", [0,0,0])
 
     print("Creating marble...")
-
-    m_0 = create_marble("M_0", [0,0,2], 0.275)
+    m_0 = create_marble("M_0", [0,0,3], 0.275)
 
     print("Creating track...")
-
     t_0 = create_track("T_0", [0,2,1])
+
+    print("Creating start funnel...")
+    f_0 = create_start_funnel("F_0", [0,0,2])
 
     return
 
