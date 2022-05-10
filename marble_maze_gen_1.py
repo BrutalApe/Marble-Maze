@@ -159,6 +159,20 @@ def bool_meshes(mesh_1, mesh_2, bool_op):
 
     return res
 
+# Unionizes 2 meshes, deletes mesh that was unioned in
+# Params:
+#   mesh_1 - main mesh object
+#   mesh_2 - mesh object to unioned onto mesh_1
+# Return:
+#   Result of union
+def unionize_meshes(mesh_1, mesh_2):
+    select_object(mesh_1.name)
+    bool_meshes(mesh_1, mesh_2, 'UNION')
+    deselect_all_meshes()
+    select_object(mesh_2.name)
+    O.object.delete()
+    return mesh_1
+
 # Creates a marble using given parameters
 # Params:
 #   name - name of marble
@@ -308,11 +322,7 @@ def create_end_collector(name, loc_vec):
     O.transform.rotate(value=0.5, orient_axis='X', orient_type='GLOBAL')
     O.rigidbody.object_add(type='PASSIVE')
 
-    select_object(collector.name)
-    bool_meshes(collector, p0, 'UNION')
-    deselect_all_meshes()
-    select_object(p0.name)
-    O.object.delete()
+    unionize_meshes(collector, p0)
 
     # Create ring around support to keep marbles inside area
     collector_bottom = create_support(name+"_bottom", loc_vec)
@@ -321,11 +331,7 @@ def create_end_collector(name, loc_vec):
     O.transform.translate(value=(0,0,-0.525))
     deselect_all_meshes()
 
-    select_object(collector.name)
-    bool_meshes(collector, collector_bottom, 'UNION')
-    deselect_all_meshes()
-    select_object(collector_bottom.name)
-    O.object.delete()
+    unionize_meshes(collector, collector_bottom)
 
     # Create small ramp in collector bottom area so marbles don't bunch near entrance
     c0 = create_cylinder(name+"_c0", [a-b for a,b in zip(loc_vec, [0,0,0.425])])
@@ -333,11 +339,7 @@ def create_end_collector(name, loc_vec):
     O.transform.rotate(value=-0.08, orient_axis='X', orient_type='GLOBAL')
     O.rigidbody.object_add(type='PASSIVE')
 
-    select_object(collector.name)
-    bool_meshes(collector, c0, 'UNION')
-    deselect_all_meshes()
-    select_object(c0.name)
-    O.object.delete()
+    unionize_meshes(collector, c0)
 
     # Also want to add small < shape so marbles coming in don't stay stuck at entrance
 
@@ -390,29 +392,16 @@ def create_track(name, loc_vec):
     O.object.delete()
 
     # Merge end supports to track to create single track object.
-    select_object(track.name)
-    bool_meshes(track, e0, 'UNION')
-    deselect_all_meshes()
-    select_object(e0.name)
-    O.object.delete()
+    unionize_meshes(track, e0)
+    unionize_meshes(track, e1)
     
-    select_object(track.name)
-    bool_meshes(track, e1, 'UNION')
-    deselect_all_meshes()
-    select_object(e1.name)
-    O.object.delete()
-
     # Add small plane at an angle inside start of track to add starting momentum
     p0 = create_plane(name+"_p0", [a - b for a, b in zip(loc_vec, [0,track_length-0.45,0])], 0.35, 0.45)
     O.transform.rotate(value=0.7, orient_axis='X', orient_type='GLOBAL')
     O.rigidbody.object_add(type='PASSIVE')
-
-    select_object(track.name)
-    bool_meshes(track, p0, 'UNION')
-    deselect_all_meshes()
-    select_object(p0.name)
-    O.object.delete()
-
+    
+    unionize_meshes(track, p0)
+    
     return track
 
 def main():
