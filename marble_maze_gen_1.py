@@ -50,6 +50,28 @@ def create_plane(name, loc_vec, x_scl, y_scl):
 
     return obj
 
+# Creates a circle using given parameters
+# Params:
+#   name - name of circle
+#   loc_vec - location of circle
+#   x,y_scl - scale of circle
+# Return:
+#   Created circle object 
+def create_circle(name, loc_vec, x_scl, y_scl):
+    print("Creating circle...")
+    z_mod = (loc_vec[2] * 1.5) + 0.75
+    loc_vec_modded = [loc_vec[0], loc_vec[1], z_mod]
+    O.mesh.primitive_circle_add(location=loc_vec_modded)
+    O.transform.resize(value=(x_scl, y_scl, 0))
+    
+    # Set circle's name to name
+    for obj in C.selected_objects:
+        if (obj.type == "MESH") and (obj.name == "Circle"):
+            obj.name = name
+            break
+
+    return obj
+
 # Creates a camera in the scene
 # Params:
 #   camera_name - name of camera to be created
@@ -242,7 +264,7 @@ def create_support(name, loc_vec):
 #   created object
 def create_start_funnel(name, loc_vec):
     
-    # Create support at basis of funnel shape
+    # Create support as basis of funnel shape
     funnel = create_support(name, loc_vec)
 
     # Scale top out to create basic funnel shape
@@ -255,7 +277,71 @@ def create_start_funnel(name, loc_vec):
     O.object.mode_set(mode="OBJECT")
 
     return funnel
-    
+
+# Creates collector for end of maze at given location
+# Params:
+#   name - name for object
+#   loc_vec - location of object
+# Return:
+#   created object
+def create_end_collector(name, loc_vec):
+
+    # Create support as basis of collector shape
+    collector  = create_support(name, loc_vec)
+
+    # will use this to cut exit hole into support for marble to roll out of
+    hole_cutter = create_cylinder(name+"_hole_cutter", loc_vec)
+    select_object(hole_cutter.name)
+    O.transform.rotate(value=1.65, orient_axis='X', orient_type='GLOBAL')
+    O.transform.resize(value=(0.375,0.375,0.375))
+    O.transform.translate(value=(0,0.2,-0.15))
+    deselect_all_meshes()
+
+    select_object(hole_cutter.name)
+    bool_meshes(collector, hole_cutter, 'DIFFERENCE')
+    deselect_all_meshes()
+    select_object(hole_cutter.name)
+    O.object.delete()
+
+    # Add small plane at an angle to make marble exit into collector base
+    p0 = create_plane(name+"_p0", [a-b for a,b in zip(loc_vec, [0,0,0.2])], 0.35, 0.4)
+    O.transform.rotate(value=0.5, orient_axis='X', orient_type='GLOBAL')
+    O.rigidbody.object_add(type='PASSIVE')
+
+    select_object(collector.name)
+    bool_meshes(collector, p0, 'UNION')
+    deselect_all_meshes()
+    select_object(p0.name)
+    O.object.delete()
+
+    # Create ring around support to keep marbles inside area
+    collector_bottom = create_support(name+"_bottom", loc_vec)
+    select_object(collector_bottom.name)
+    O.transform.resize(value=(3, 3, 0.3))
+    O.transform.translate(value=(0,0,-0.525))
+    deselect_all_meshes()
+
+    select_object(collector.name)
+    bool_meshes(collector, collector_bottom, 'UNION')
+    deselect_all_meshes()
+    select_object(collector_bottom.name)
+    O.object.delete()
+
+    # Create small ramp in collector bottom area so marbles don't bunch near entrance
+    c0 = create_cylinder(name+"_c0", [a-b for a,b in zip(loc_vec, [0,0,0.425])])
+    O.transform.resize(value=(1.3,1.3,0.01))
+    O.transform.rotate(value=-0.08, orient_axis='X', orient_type='GLOBAL')
+    O.rigidbody.object_add(type='PASSIVE')
+
+    select_object(collector.name)
+    bool_meshes(collector, c0, 'UNION')
+    deselect_all_meshes()
+    select_object(c0.name)
+    O.object.delete()
+
+    # Also want to add small < shape so marbles coming in don't stay stuck at entrance
+
+    return collector
 
 # Creates track at given location
 # Params:
@@ -387,12 +473,17 @@ def main():
 
     print("Creating marble...")
     m_0 = create_marble("M_0", [0,0,3], 0.275)
+    m_1 = create_marble("M_1", [0,0,4], 0.275)
+    m_2 = create_marble("M_2", [0,0,5], 0.275)
 
     print("Creating track...")
     t_0 = create_track("T_0", [0,2,1])
 
     print("Creating start funnel...")
     f_0 = create_start_funnel("F_0", [0,0,2])
+
+    print("Creating end collector...")
+    c_0 = create_end_collector("E_0", [0,4,0])
 
     return
 
